@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { PipecatClient, RTVIEvent } from '@pipecat-ai/client-js';
+import { SmallWebRTCTransport } from '@pipecat-ai/small-webrtc-transport';
 
 interface ServerConfig {
   status: string;
@@ -15,8 +17,7 @@ export function App() {
   const [statusText, setStatusText] = useState('Ready to connect');
   const [transcript, setTranscript] = useState<Array<{ role: 'user' | 'agent'; text: string }>>([]);
 
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
+  const clientRef = useRef<PipecatClient | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -33,146 +34,92 @@ export function App() {
 
   const startCall = async () => {
     setIsConnecting(true);
-    setStatusText('Requesting microphone access...');
+    setStatusText('Connecting with Pipecat WebRTC...');
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+      const transport = new SmallWebRTCTransport();
+      const client = new PipecatClient({
+        transport,
+        enableMic: true,
+        enableCam: false,
+        callbacks: {
+          onConnected: () => {
+            setIsConnected(true);
+            setIsConnecting(false);
+            setStatusText('Call active (SmallWebRTC peer-to-peer)');
+          },
+          onDisconnected: () => {
+            setIsConnected(false);
+            setIsConnecting(false);
+            setStatusText('Call ended');
+          },
+          onTransportStateChanged: (state: string) => {
+            console.log('WebRTC transport state:', state);
+            if (state === 'connecting') {
+              setStatusText('Negotiating WebRTC media streams...');
+            } else if (state === 'connected') {
+              setIsConnected(true);
+              setIsConnecting(false);
+              setStatusText('Call active (SmallWebRTC peer-to-peer)');
+            }
+          },
+          onBotReady: () => {
+            setStatusText('Agent ready to speak');
+          },
+          onUserTranscript: (data: { text: string; final: boolean }) => {
+            if (data?.text?.trim()) {
+              setTranscript((prev) => [...prev, { role: 'user', text: data.text }]);
+            }
+          },
+          onBotTranscript: (data: { text: string }) => {
+            if (data?.text?.trim()) {
+              setTranscript((prev) => {
+                const last = prev[prev.length - 1];
+                if (last && last.role === 'agent') {
+                  return [...prev.slice(0, -1), { role: 'agent', text: last.text + ' ' + data.text }];
+                }
+                return [...prev, { role: 'agent', text: data.text }];
+              });
+            }
+          },
+          onError: (err: any) => {
+            console.error('PipecatClient error:', err);
+            setStatusText(`Error: ${err?.message || err}`);
+            setIsConnecting(false);
+          },
         },
       });
-      localStreamRef.current = stream;
 
-      setStatusText('Setting up WebRTC peer connection...');
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
-      pcRef.current = pc;
-
-      // Add local audio tracks to PC
-      stream.getAudioTracks().forEach((track) => {
-        pc.addTrack(track, stream);
-      });
-
-      // Handle remote incoming audio from Pipecat
-      pc.ontrack = (event) => {
-        if (event.track.kind === 'audio' && audioElRef.current) {
-          audioElRef.current.srcObject = event.streams[0];
+      client.on(RTVIEvent.TrackStarted, (track: MediaStreamTrack, participant: any) => {
+        if (!participant?.local && track.kind === 'audio' && audioElRef.current) {
+          audioElRef.current.srcObject = new MediaStream([track]);
           audioElRef.current.play().catch((e) => console.warn('Audio play error:', e));
         }
-      };
-
-      // Candidate handling via PATCH
-      let pcId: string | null = null;
-      const candidateQueue: RTCIceCandidate[] = [];
-
-      const sendCandidate = async (candidate: RTCIceCandidate, targetPcId: string) => {
-        try {
-          await fetch('/api/offer', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pc_id: targetPcId,
-              candidates: [
-                {
-                  candidate: candidate.candidate,
-                  sdp_mid: candidate.sdpMid,
-                  sdp_mline_index: candidate.sdpMLineIndex,
-                },
-              ],
-            }),
-          });
-        } catch (e) {
-          console.warn('ICE candidate patch failed:', e);
-        }
-      };
-
-      pc.onicecandidate = async (event) => {
-        if (!event.candidate) return;
-        if (!pcId) {
-          candidateQueue.push(event.candidate);
-        } else {
-          await sendCandidate(event.candidate, pcId);
-        }
-      };
-
-      const markConnected = () => {
-        setIsConnected(true);
-        setIsConnecting(false);
-        setStatusText('Call active (SmallWebRTC peer-to-peer)');
-      };
-
-      pc.onconnectionstatechange = () => {
-        const state = pc.connectionState;
-        if (state === 'connected') {
-          markConnected();
-        } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-          handleDisconnect();
-        }
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        const iceState = pc.iceConnectionState;
-        if (iceState === 'connected' || iceState === 'completed') {
-          markConnected();
-        } else if (iceState === 'failed' || iceState === 'closed') {
-          handleDisconnect();
-        }
-      };
-
-      // Create Offer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      setStatusText('Sending SDP offer to local Pipecat server...');
-      const response = await fetch('/api/offer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sdp: offer.sdp,
-          type: offer.type,
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Server returned HTTP ${response.status}`);
-      }
+      clientRef.current = client;
 
-      const answerData = await response.json();
-      pcId = answerData.pc_id;
-
-      // Flush candidates gathered before SDP answer arrived
-      for (const candidate of candidateQueue) {
-        if (pcId) {
-          await sendCandidate(candidate, pcId);
-        }
-      }
-      candidateQueue.length = 0;
-
-      setStatusText('Connecting media streams...');
-      await pc.setRemoteDescription(
-        new RTCSessionDescription({
-          type: answerData.type,
-          sdp: answerData.sdp,
-        })
-      );
+      await client.connect({
+        webrtcRequestParams: {
+          endpoint: '/api/offer',
+        },
+      });
     } catch (err: any) {
       console.error('Connection failed:', err);
-      setStatusText(`Connection failed: ${err.message}`);
-      handleDisconnect();
+      setStatusText(`Connection failed: ${err?.message || err}`);
+      setIsConnecting(false);
+      setIsConnected(false);
     }
   };
 
-  const handleDisconnect = () => {
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
+  const handleDisconnect = async () => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.disconnect();
+      } catch (e) {
+        console.warn('Disconnect error:', e);
+      }
+      clientRef.current = null;
     }
     setIsConnected(false);
     setIsConnecting(false);
@@ -180,12 +127,10 @@ export function App() {
   };
 
   const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
-      }
+    if (clientRef.current) {
+      const nextMuted = !isMuted;
+      clientRef.current.enableMic(!nextMuted);
+      setIsMuted(nextMuted);
     }
   };
 

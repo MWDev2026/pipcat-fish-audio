@@ -19,6 +19,7 @@ from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.connection import IceServer, SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.request_handler import (
+    IceCandidate,
     SmallWebRTCPatchRequest,
     SmallWebRTCRequest,
     SmallWebRTCRequestHandler,
@@ -179,7 +180,19 @@ async def handle_offer(request: Request, background_tasks: BackgroundTasks):
 async def handle_patch(request: Request):
     try:
         body = await request.json()
-        patch_req = SmallWebRTCPatchRequest(**body)
+        raw_candidates = body.get("candidates", [])
+        candidates = [
+            IceCandidate(
+                candidate=c.get("candidate", "") if isinstance(c, dict) else getattr(c, "candidate", ""),
+                sdp_mid=c.get("sdp_mid", c.get("sdpMid", "")) if isinstance(c, dict) else getattr(c, "sdp_mid", ""),
+                sdp_mline_index=c.get("sdp_mline_index", c.get("sdpMLineIndex", 0)) if isinstance(c, dict) else getattr(c, "sdp_mline_index", 0),
+            )
+            for c in raw_candidates
+        ]
+        patch_req = SmallWebRTCPatchRequest(
+            pc_id=body.get("pc_id"),
+            candidates=candidates,
+        )
         await request_handler.handle_patch_request(patch_req)
         return {"status": "ok"}
     except Exception as e:
