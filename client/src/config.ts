@@ -10,8 +10,11 @@ export const TRANSPORT_LABELS: Record<TransportType, string> = {
 
 export const DEFAULT_TRANSPORT: TransportType = 'smallwebrtc';
 
+const rawServerUrl = import.meta.env.VITE_SERVER_URL?.replace(/\/+$/, '') || '';
 export const SERVER_BASE_URL: string =
-  import.meta.env.VITE_SERVER_URL?.replace(/\/+$/, '') || '';
+  rawServerUrl && !rawServerUrl.startsWith('http://') && !rawServerUrl.startsWith('https://')
+    ? `https://${rawServerUrl}`
+    : rawServerUrl;
 
 export function getApiBaseUrl(): string {
   return SERVER_BASE_URL;
