@@ -72,8 +72,10 @@ async def run_bot(webrtc_connection: SmallWebRTCConnection):
                 "Answer directly in 1 to 2 short spoken sentences."
             ),
             extra={
-                "chat_template_kwargs": {"enable_thinking": False},
-                "extra_body": {"chat_template_kwargs": {"enable_thinking": False}},
+                "extra_body": {
+                    "chat_template_kwargs": {"enable_thinking": False},
+                    "reasoning_effort": "none",
+                },
             },
         ),
     )
