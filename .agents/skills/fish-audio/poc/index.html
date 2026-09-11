@@ -1,0 +1,1010 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fish Audio PoC</title>
+<!-- All visual styling comes from daisyUI components. No local stylesheet. -->
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<main class="container mx-auto p-4">
+<h1 class="text-2xl font-bold">Fish Audio PoC</h1>
+<p class="opacity-70">Every capability, every parameter, every call traced. The API
+  key is proxied server-side and never reaches this page.</p>
+
+<div class="tabs tabs-lift mt-4">
+
+<!-- ------------------------------------------------------------------ TTS -->
+<input type="radio" name="tabs" class="tab" aria-label="Text to speech" checked>
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Text to speech <code class="text-xs">POST /v1/tts</code></h2>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Text</legend>
+        <textarea id="t-text" class="textarea w-full" rows="3">The quick brown fox jumps over the lazy dog.</textarea>
+      </fieldset>
+
+      <div class="grid sm:grid-cols-2 gap-2">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Model (sent as a header)</legend>
+          <select id="t-model" class="select w-full">
+            <option value="s2.1-pro-free" selected>s2.1-pro-free - free</option>
+            <option value="s2.1-pro">s2.1-pro - paid</option>
+            <option value="s2-pro">s2-pro - paid</option>
+            <option value="s1">s1 - paid</option>
+            <option value="drama-3-preview">drama-3-preview - paid</option>
+          </select>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Voice</legend>
+          <select id="t-ref" class="select w-full"><option value="">default voice</option></select>
+        </fieldset>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-2">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Format</legend>
+          <select id="t-format" class="select w-full"><option>mp3</option><option>wav</option><option>pcm</option><option>opus</option></select>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Latency</legend>
+          <select id="t-latency" class="select w-full"><option value="">normal</option><option>balanced</option><option selected>low</option></select>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Speed 0.5-2.0</legend>
+          <input id="t-speed" type="number" step=".1" min=".5" max="2" placeholder="1.0" class="input w-full">
+        </fieldset>
+      </div>
+
+      <div class="collapse collapse-arrow border">
+        <input type="checkbox">
+        <div class="collapse-title font-medium">Advanced parameters</div>
+        <div class="collapse-content">
+          <div class="grid sm:grid-cols-3 gap-2">
+            <fieldset class="fieldset"><legend class="fieldset-legend">temperature</legend>
+              <input id="t-temp" type="number" step=".05" min="0" max="1" placeholder="0.7" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">top_p</legend>
+              <input id="t-topp" type="number" step=".05" min="0" max="1" placeholder="0.7" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">chunk_length</legend>
+              <input id="t-chunk" type="number" min="100" max="300" placeholder="300" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">min_chunk_length</legend>
+              <input id="t-minchunk" type="number" min="0" max="100" placeholder="50" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">max_new_tokens</legend>
+              <input id="t-maxtok" type="number" placeholder="1024" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">repetition_penalty</legend>
+              <input id="t-rep" type="number" step=".05" placeholder="1.2" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">early_stop_threshold</legend>
+              <input id="t-early" type="number" step=".05" min="0" max="1" placeholder="1" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">sample_rate (Hz)</legend>
+              <input id="t-sr" type="number" placeholder="default" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">volume (dB)</legend>
+              <input id="t-vol" type="number" placeholder="0" class="input w-full"></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">mp3_bitrate</legend>
+              <select id="t-mp3" class="select w-full"><option value="">128</option><option>64</option><option>192</option></select></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">opus_bitrate</legend>
+              <select id="t-opus" class="select w-full"><option value="">default</option><option>24000</option><option>32000</option><option>48000</option><option>64000</option></select></fieldset>
+          </div>
+          <fieldset class="fieldset">
+            <label class="label"><input type="checkbox" id="t-norm" class="checkbox" checked> normalize text</label>
+            <label class="label"><input type="checkbox" id="t-cond" class="checkbox" checked> condition_on_previous_chunks</label>
+            <label class="label"><input type="checkbox" id="t-loud" class="checkbox"> normalize_loudness</label>
+            <label class="label"><input type="checkbox" id="t-qg" class="checkbox"> features: quality-guard</label>
+          </fieldset>
+          <p class="text-xs opacity-70">There is no language parameter; language is
+            inferred from the text. Unknown fields are ignored silently, so a typo does nothing.</p>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button id="t-go" class="btn btn-primary">Synthesize</button>
+        <button id="t-show" class="btn btn-soft">Preview request</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Result</h2>
+      <audio id="t-audio" controls class="w-full" hidden></audio>
+      <div id="t-stat" class="alert">No synthesis yet.</div>
+      <pre id="t-out" class="mockup-code text-xs overflow-auto max-h-96" hidden></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- --------------------------------------------------------------- STREAM -->
+<input type="radio" name="tabs" class="tab" aria-label="Streaming">
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Streaming synthesis <code class="text-xs">WSS /v1/tts/live</code></h2>
+      <p class="text-sm opacity-70">MessagePack protocol. Send text chunks one at a
+        time to simulate a token stream from an LLM.</p>
+
+      <div class="grid sm:grid-cols-2 gap-2">
+        <fieldset class="fieldset"><legend class="fieldset-legend">Model</legend>
+          <select id="s-model" class="select w-full">
+            <option value="s2.1-pro-free" selected>s2.1-pro-free - free</option>
+            <option value="s2.1-pro">s2.1-pro - paid</option>
+            <option value="s2-pro">s2-pro - paid</option>
+            <option value="s1">s1 - paid</option>
+          </select></fieldset>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Voice</legend>
+          <select id="s-ref" class="select w-full"><option value="">default voice</option></select></fieldset>
+      </div>
+      <div class="grid sm:grid-cols-3 gap-2">
+        <fieldset class="fieldset"><legend class="fieldset-legend">Format</legend>
+          <select id="s-format" class="select w-full"><option>mp3</option><option>wav</option><option>pcm</option><option>opus</option></select></fieldset>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Latency</legend>
+          <select id="s-latency" class="select w-full"><option selected>low</option><option>balanced</option><option value="">normal</option></select></fieldset>
+        <fieldset class="fieldset"><legend class="fieldset-legend">chunk_length</legend>
+          <input id="s-chunk" type="number" min="100" max="300" placeholder="300" class="input w-full"></fieldset>
+      </div>
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Text chunk (edit and send repeatedly)</legend>
+        <textarea id="s-text" class="textarea w-full" rows="2">Hello there. This is streaming synthesis.</textarea>
+      </fieldset>
+      <div class="card-actions">
+        <button id="s-start" class="btn btn-primary">1. start</button>
+        <button id="s-send" class="btn btn-soft" disabled>2. send text</button>
+        <button id="s-flush" class="btn btn-soft" disabled>flush</button>
+        <button id="s-stop" class="btn btn-soft" disabled>3. stop</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Event log</h2>
+      <audio id="s-audio" controls class="w-full"></audio>
+      <pre id="s-out" class="mockup-code text-xs overflow-auto max-h-96">idle</pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ---------------------------------------------------------------- AGENT -->
+<input type="radio" name="tabs" class="tab" aria-label="Agent">
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="flex flex-col gap-4">
+    <div class="card bg-base-100 border">
+      <div class="card-body">
+        <h2 class="card-title">Create an agent <code class="text-xs">POST /v1/agent/agents</code></h2>
+        <p class="text-sm opacity-70">Speech to speech over WebRTC. Fish runs
+          transcription, turn-taking and synthesis; the browser joins with its microphone.</p>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Name</legend>
+          <input id="ag-name" value="poc-agent" class="input w-full"></fieldset>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Description</legend>
+          <input id="ag-desc" class="input w-full" placeholder="optional"></fieldset>
+
+        <div class="collapse collapse-arrow border">
+          <input type="checkbox" checked>
+          <div class="collapse-title font-medium">prompt</div>
+          <div class="collapse-content">
+            <fieldset class="fieldset"><legend class="fieldset-legend">system_prompt</legend>
+              <textarea id="ag-prompt" class="textarea w-full" rows="3">You are a friendly interviewer. Ask one question at a time and wait for a full answer before moving on.</textarea></fieldset>
+            <div class="grid sm:grid-cols-2 gap-2">
+              <fieldset class="fieldset"><legend class="fieldset-legend">first_message_mode</legend>
+                <select id="ag-fmm" class="select w-full"><option value="">default</option>
+                  <option>off</option><option selected>fixed</option><option>prompt</option></select></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">first_message</legend>
+                <input id="ag-first" value="Hi, thanks for joining. Ready to start?" class="input w-full"></fieldset>
+            </div>
+            <fieldset class="fieldset"><legend class="fieldset-legend">first_message_prompt <span class="opacity-60">(when mode = prompt)</span></legend>
+              <input id="ag-fmp" class="input w-full" placeholder="optional"></fieldset>
+          </div>
+        </div>
+
+        <div class="collapse collapse-arrow border">
+          <input type="checkbox">
+          <div class="collapse-title font-medium">voice</div>
+          <div class="collapse-content">
+            <div class="grid sm:grid-cols-2 gap-2">
+              <fieldset class="fieldset"><legend class="fieldset-legend">voice_id</legend>
+                <select id="ag-voice" class="select w-full"><option value="">default voice</option></select></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">speaking_language</legend>
+                <select id="ag-lang" class="select w-full"><option>en</option><option>ja</option>
+                  <option>zh</option><option>ko</option><option>es</option><option>fr</option>
+                  <option>de</option><option>pt</option><option>it</option><option>nl</option></select></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">speed</legend>
+                <input id="ag-speed" type="number" step=".1" class="input w-full" placeholder="1.0"></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">keyterms <span class="opacity-60">comma separated</span></legend>
+                <input id="ag-keyterms" class="input w-full" placeholder="Kubernetes, gRPC"></fieldset>
+            </div>
+            <label class="label"><input type="checkbox" id="ag-expressive" class="checkbox"> expressive</label>
+          </div>
+        </div>
+
+        <div class="collapse collapse-arrow border">
+          <input type="checkbox">
+          <div class="collapse-title font-medium">conversation</div>
+          <div class="collapse-content">
+            <div class="grid sm:grid-cols-2 gap-2">
+              <fieldset class="fieldset"><legend class="fieldset-legend">max_duration_seconds</legend>
+                <input id="ag-maxdur" type="number" class="input w-full" placeholder="1800"></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">eagerness</legend>
+                <select id="ag-eager" class="select w-full"><option value="">default</option>
+                  <option>relaxed</option><option>balanced</option><option>eager</option></select></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">interruption_sensitivity</legend>
+                <select id="ag-intsens" class="select w-full"><option value="">default</option>
+                  <option>low</option><option>balanced</option><option>high</option></select></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">hangup_after_seconds</legend>
+                <input id="ag-hangup" type="number" class="input w-full" placeholder="optional"></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">timezone</legend>
+                <input id="ag-tz" class="input w-full" placeholder="America/Los_Angeles"></fieldset>
+            </div>
+            <label class="label"><input type="checkbox" id="ag-interruptible" class="checkbox" checked> interruptible</label>
+            <label class="label"><input type="checkbox" id="ag-reengage" class="checkbox"> reengage_enabled</label>
+            <label class="label"><input type="checkbox" id="ag-farewell" class="checkbox"> hangup_farewell_enabled</label>
+            <label class="label"><input type="checkbox" id="ag-record" class="checkbox" checked> record_audio</label>
+          </div>
+        </div>
+
+        <div class="collapse collapse-arrow border">
+          <input type="checkbox">
+          <div class="collapse-title font-medium">llm and guardrails</div>
+          <div class="collapse-content">
+            <fieldset class="fieldset"><legend class="fieldset-legend">llm.model</legend>
+              <select id="ag-llm" class="select w-full"><option value="">default</option>
+                <option>anthropic/claude-sonnet-4.6</option><option>anthropic/claude-haiku-4.5</option>
+                <option>openai/gpt-5.6-luna</option><option>openai/gpt-4o</option>
+                <option>google/gemini-3.6-flash</option><option>google/gemini-3.5-flash-lite</option>
+                <option>google/gemma-4-26b-a4b-it</option></select></fieldset>
+            <label class="label"><input type="checkbox" id="ag-gr-focus" class="checkbox"> guardrails.focus</label>
+            <label class="label"><input type="checkbox" id="ag-gr-manip" class="checkbox"> guardrails.manipulation</label>
+          </div>
+        </div>
+
+        <div class="collapse collapse-arrow border">
+          <input type="checkbox" checked>
+          <div class="collapse-title font-medium">analysis - scored criteria and extracted fields</div>
+          <div class="collapse-content">
+            <p class="text-xs opacity-70">Criteria are graded after the call and returned
+              in <code>analysis.criteria_results</code>. Data fields are extracted into
+              <code>analysis.data</code>. Both are JSON arrays.</p>
+            <fieldset class="fieldset"><legend class="fieldset-legend">criteria</legend>
+              <textarea id="ag-criteria" class="textarea w-full" rows="4">[
+  {"name": "system_design", "description": "Did they decompose the problem and justify trade-offs?"},
+  {"name": "communication", "description": "Were the answers structured and clear?"}
+]</textarea></fieldset>
+            <fieldset class="fieldset"><legend class="fieldset-legend">data_fields <span class="opacity-60">type: boolean | text | number | enum</span></legend>
+              <textarea id="ag-datafields" class="textarea w-full" rows="4">[
+  {"name": "years_experience", "type": "number", "description": "Years of relevant experience"},
+  {"name": "would_advance", "type": "boolean", "description": "Should they proceed to the next round?"}
+]</textarea></fieldset>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button id="ag-create" class="btn btn-primary">Create agent</button>
+          <button id="ag-preview" class="btn btn-soft">Preview payload</button>
+          <button id="ag-list" class="btn btn-soft">Refresh list</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 border">
+      <div class="card-body">
+        <h2 class="card-title">Run a session <code class="text-xs">POST /v1/agent/sessions</code></h2>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Agent</legend>
+          <select id="se-agent" class="select w-full"><option value="">loading...</option></select></fieldset>
+        <div class="grid sm:grid-cols-2 gap-2">
+          <fieldset class="fieldset"><legend class="fieldset-legend">Override language</legend>
+            <select id="se-lang" class="select w-full"><option value="">agent default</option>
+              <option>en</option><option>ja</option><option>zh</option><option>ko</option>
+              <option>es</option><option>fr</option><option>de</option><option>pt</option>
+              <option>it</option><option>nl</option></select></fieldset>
+          <fieldset class="fieldset"><legend class="fieldset-legend">Override first message</legend>
+            <input id="se-first" placeholder="optional" class="input w-full"></fieldset>
+        </div>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Override system prompt</legend>
+          <textarea id="se-prompt" class="textarea w-full" rows="2" placeholder="optional"></textarea></fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">metadata - your own ids, for attributing cost later</legend>
+          <input id="se-meta" class="input w-full" value='{"interview_id":"int_123"}'>
+        </fieldset>
+        <div class="card-actions">
+          <button id="se-start" class="btn btn-primary">Start call</button>
+          <button id="se-mute" class="btn btn-soft" disabled>Mute mic</button>
+          <button id="se-interrupt" class="btn btn-soft" disabled>Interrupt</button>
+          <button id="se-end" class="btn btn-soft" disabled>End call</button>
+        </div>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Send a typed turn instead of speaking</legend>
+          <div class="join">
+            <input id="se-say" class="input join-item w-full" placeholder="type a message" disabled>
+            <button id="se-send" class="btn btn-soft join-item" disabled>Send</button>
+          </div>
+        </fieldset>
+        <div class="join">
+          <button id="se-fetch" class="btn btn-soft join-item">Server transcript</button>
+          <button id="se-rec" class="btn btn-soft join-item">Recordings</button>
+          <button id="se-list" class="btn btn-soft join-item">All sessions</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Live call
+        <span id="se-status" class="badge badge-ghost">idle</span>
+        <span id="se-mode" class="badge badge-ghost">-</span>
+      </h2>
+      <div id="se-stat" class="alert">No session yet.</div>
+      <div id="se-chat" class="overflow-y-auto max-h-96"></div>
+      <pre id="se-out" class="mockup-code text-xs overflow-auto max-h-96" hidden></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ------------------------------------------------------------------ ASR -->
+<input type="radio" name="tabs" class="tab" aria-label="Speech to text">
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Speech to text <code class="text-xs">POST /v1/asr</code></h2>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Audio file</legend>
+        <input type="file" id="a-file" accept="audio/*" class="file-input w-full"></fieldset>
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Language (hint only, always auto-detected)</legend>
+        <input id="a-lang" placeholder="en, ja, zh" class="input w-full">
+      </fieldset>
+      <fieldset class="fieldset">
+        <label class="label"><input type="checkbox" id="a-ts" class="checkbox" checked>
+          Request segment timings (ignore_timestamps=false)</label>
+      </fieldset>
+      <div class="card-actions"><button id="a-go" class="btn btn-primary">Transcribe</button></div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Transcript</h2>
+      <div id="a-stat" class="alert">No transcription yet.</div>
+      <pre id="a-out" class="mockup-code text-xs overflow-auto max-h-96" hidden></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- --------------------------------------------------------------- MODELS -->
+<input type="radio" name="tabs" class="tab" aria-label="Voice models">
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="flex flex-col gap-4">
+    <div class="card bg-base-100 border">
+      <div class="card-body">
+        <h2 class="card-title">Your voice models <code class="text-xs">GET /model</code></h2>
+        <div class="grid sm:grid-cols-3 gap-2">
+          <fieldset class="fieldset"><legend class="fieldset-legend">page_size</legend>
+            <input id="m-size" type="number" min="1" max="100" value="20" class="input w-full"></fieldset>
+          <fieldset class="fieldset"><legend class="fieldset-legend">page_number</legend>
+            <input id="m-page" type="number" min="1" value="1" class="input w-full"></fieldset>
+          <fieldset class="fieldset"><legend class="fieldset-legend">sort_by</legend>
+            <select id="m-sort" class="select w-full"><option>score</option><option>task_count</option><option selected>created_at</option></select></fieldset>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-2">
+          <fieldset class="fieldset"><legend class="fieldset-legend">Title contains</legend>
+            <input id="m-title-q" class="input w-full"></fieldset>
+          <fieldset class="fieldset"><legend class="fieldset-legend">Language</legend>
+            <input id="m-lang" placeholder="en" class="input w-full"></fieldset>
+        </div>
+        <fieldset class="fieldset">
+          <label class="label"><input type="checkbox" id="m-self" class="checkbox" checked> Only my workspace</label>
+        </fieldset>
+        <div class="card-actions"><button id="m-list" class="btn btn-primary">List models</button></div>
+        <div id="m-table" class="overflow-x-auto"></div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 border">
+      <div class="card-body">
+        <h2 class="card-title">Clone a voice <code class="text-xs">POST /model</code></h2>
+        <fieldset class="fieldset"><legend class="fieldset-legend">Samples (1-20 audio files)</legend>
+          <input type="file" id="m-files" accept="audio/*" multiple class="file-input w-full"></fieldset>
+        <div class="grid sm:grid-cols-2 gap-2">
+          <fieldset class="fieldset"><legend class="fieldset-legend">Title</legend>
+            <input id="m-title" value="poc-voice" class="input w-full"></fieldset>
+          <fieldset class="fieldset"><legend class="fieldset-legend">Visibility</legend>
+            <select id="m-vis" class="select w-full"><option selected>private</option><option>unlist</option><option>public</option></select></fieldset>
+        </div>
+        <div class="collapse collapse-arrow border">
+          <input type="checkbox">
+          <div class="collapse-title font-medium">Optional</div>
+          <div class="collapse-content">
+            <div class="grid sm:grid-cols-2 gap-2">
+              <fieldset class="fieldset"><legend class="fieldset-legend">Description</legend>
+                <input id="m-desc" class="input w-full"></fieldset>
+              <fieldset class="fieldset"><legend class="fieldset-legend">Tags (comma separated)</legend>
+                <input id="m-tags" class="input w-full"></fieldset>
+            </div>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">Transcripts, one per line; blank infers by ASR</legend>
+              <textarea id="m-texts" class="textarea w-full" rows="2"></textarea>
+            </fieldset>
+            <fieldset class="fieldset">
+              <label class="label"><input type="checkbox" id="m-enh" class="checkbox" checked> enhance_audio_quality</label>
+              <label class="label"><input type="checkbox" id="m-samp" class="checkbox"> generate_sample</label>
+            </fieldset>
+          </div>
+        </div>
+        <div class="card-actions"><button id="m-go" class="btn btn-primary">Create voice model</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Detail</h2>
+      <div id="m-stat" class="alert">Nothing selected.</div>
+      <pre id="m-out" class="mockup-code text-xs overflow-auto max-h-96" hidden></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<input type="radio" name="tabs" class="tab" aria-label="Usage">
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Usage</h2>
+      <p class="text-sm opacity-70">Agent conversations are the only thing billed
+        per unit you can read back, via <code>duration_seconds</code>. TTS and ASR
+        move the account balance only.</p>
+      <div class="card-actions"><button id="u-go" class="btn btn-primary">Refresh usage</button></div>
+      <div class="stats stats-vertical sm:stats-horizontal shadow" id="u-stats"></div>
+      <div id="u-agents" class="overflow-x-auto"></div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Conversations</h2>
+      <div id="u-stat" class="alert">Not loaded.</div>
+      <div id="u-table" class="overflow-x-auto"></div>
+      <pre id="u-out" class="mockup-code text-xs overflow-auto max-h-96" hidden></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ----------------------------------------------------------------- WIRE -->
+<input type="radio" name="tabs" class="tab" aria-label="Wire log">
+<div class="tab-content p-4">
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Upstream calls</h2>
+      <p class="text-sm opacity-70">Newest first. Authorization is redacted.</p>
+      <div class="card-actions"><button id="w-refresh" class="btn btn-soft">Refresh</button></div>
+      <div id="w-table" class="overflow-x-auto"></div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border">
+    <div class="card-body">
+      <h2 class="card-title">Request and response</h2>
+      <div id="w-stat" class="alert">Select a row.</div>
+      <pre id="w-detail" class="mockup-code text-xs overflow-auto max-h-96" hidden></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+</main>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const num = el => el.value === "" ? undefined : Number(el.value);
+const str = el => el.value.trim() === "" ? undefined : el.value.trim();
+const json = o => JSON.stringify(o, null, 2);
+
+/** Write a results pane: an alert line plus an optional detail block. */
+function out(prefix, status, detail, kind = "") {
+  const el = $(`${prefix}-stat`);
+  el.className = `alert ${kind}`;
+  el.innerHTML = status;
+  const pre = $(`${prefix}-out`) ?? $(`${prefix}-detail`);
+  if (pre) { pre.hidden = detail === undefined; if (detail !== undefined) pre.textContent = detail; }
+}
+const busy = (btn, on) => {
+  btn.disabled = on;
+  btn.querySelector(".loading")?.remove();
+  if (on) btn.insertAdjacentHTML("afterbegin", '<span class="loading loading-spinner loading-xs"></span>');
+};
+
+/**
+ * Error reporting for a PoC: never swallow anything. Returns a one-line summary
+ * plus the full detail, and always mirrors to the console. Truncating or
+ * flattening an error here is how you lose an afternoon.
+ */
+async function describe(res, url) {
+  const raw = await res.text();
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch {}
+  const e = parsed?.error;
+  const summary = `HTTP ${res.status}` + (e?.code ? ` ${e.code}` : "") +
+    (e?.retriable ? " (retriable)" : "") + (e?.traceId ? ` - trace #${e.traceId}` : "");
+  const detail = [
+    `${res.status} ${res.statusText}  ${url}`,
+    `response headers:`,
+    ...[...res.headers].map(([k, v]) => `  ${k}: ${v}`),
+    `response body:`,
+    raw || "  (empty)",
+  ].join("\n");
+  console.error("[poc]", summary, { url, status: res.status, body: raw });
+  return { summary, detail };
+}
+
+/** Network-level failures produce an opaque "Failed to fetch"; say what it means. */
+function describeNetwork(err, url) {
+  const offline = /failed to fetch|networkerror|load failed/i.test(err.message);
+  const summary = offline
+    ? `Cannot reach the PoC server at ${location.origin}`
+    : `${err.name}: ${err.message}`;
+  const detail = [
+    `request: ${url}`,
+    `error:   ${err.name}: ${err.message}`,
+    offline ? "\nThe browser could not open the connection at all, so this is not\n" +
+              "an API error. Usual causes:\n" +
+              "  - the server is not running:  pnpm start\n" +
+              "  - it exited; check its console output\n" +
+              "  - a different port than " + location.port : "",
+    err.stack ? `\nstack:\n${err.stack}` : "",
+  ].filter(Boolean).join("\n");
+  console.error("[poc] network failure", { url, err });
+  return { summary, detail };
+}
+
+/** Throws an Error carrying `.detail` so callers can show the whole thing. */
+async function api(url, opts) {
+  let res;
+  try { res = await fetch(url, opts); }
+  catch (err) {
+    const d = describeNetwork(err, url);
+    const e = new Error(d.summary); e.detail = d.detail; throw e;
+  }
+  if (!res.ok) {
+    const d = await describe(res, url);
+    const e = new Error(d.summary); e.detail = d.detail; throw e;
+  }
+  return res.json();
+}
+
+/** Refresh lists when a tab is opened, so pickers are never stale. */
+const tabInputs = [...document.querySelectorAll('input[name="tabs"]')];
+const onOpen = { "Agent": () => $("ag-list").click(), "Voice models": () => $("m-list").click(),
+                 "Usage": () => $("u-go").click(), "Wire log": () => $("w-refresh").click() };
+tabInputs.forEach(t => t.onchange = () => onOpen[t.getAttribute("aria-label")]?.());
+
+/** Voice pickers beat asking someone to paste a 32-character id. */
+async function loadVoices() {
+  try {
+    const d = await api("/api/models?self=true&page_size=100");
+    const trained = (d.items ?? []).filter(m => m.state === "trained");
+    for (const sel of ["t-ref", "s-ref", "ag-voice"]) {
+      const el = $(sel), keep = el.value;
+      el.innerHTML = '<option value="">default voice</option>' +
+        trained.map(m => `<option value="${m._id}">${m.title ?? m._id}</option>`).join("");
+      el.value = keep;
+    }
+  } catch { /* leave the default option in place */ }
+}
+loadVoices();
+
+// ---------------------------------------------------------------------- TTS
+function ttsBody() {
+  return { text: $("t-text").value, model: $("t-model").value, format: $("t-format").value,
+    latency: str($("t-latency")), reference_id: str($("t-ref")),
+    temperature: num($("t-temp")), top_p: num($("t-topp")), chunk_length: num($("t-chunk")),
+    min_chunk_length: num($("t-minchunk")), max_new_tokens: num($("t-maxtok")),
+    repetition_penalty: num($("t-rep")), early_stop_threshold: num($("t-early")),
+    sample_rate: num($("t-sr")), mp3_bitrate: num($("t-mp3")), opus_bitrate: num($("t-opus")),
+    normalize: $("t-norm").checked, condition_on_previous_chunks: $("t-cond").checked,
+    prosody: { speed: num($("t-speed")), volume: num($("t-vol")),
+               normalize_loudness: $("t-loud").checked || undefined },
+    features: $("t-qg").checked ? ["quality-guard"] : undefined };
+}
+$("t-show").onclick = () => {
+  const b = ttsBody(), model = b.model; delete b.model;
+  out("t", "Request that would be sent",
+    `POST https://api.fish.audio/v1/tts\nAuthorization: Bearer ***redacted***\n` +
+    `Content-Type: application/json\nmodel: ${model}\n\n${json(b)}`, "alert-info");
+};
+$("t-go").onclick = async () => {
+  const btn = $("t-go"); busy(btn, true); $("t-audio").hidden = true;
+  try {
+    let res;
+    try { res = await fetch("/api/tts", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(ttsBody()) }); }
+    catch (err) { const d = describeNetwork(err, "/api/tts");
+      return out("t", d.summary, d.detail, "alert-error"); }
+    if (!res.ok) { const d = await describe(res, "/api/tts");
+      return out("t", d.summary, d.detail, "alert-error"); }
+    const blob = await res.blob();
+    $("t-audio").src = URL.createObjectURL(blob); $("t-audio").hidden = false;
+    out("t", `First byte <b>${res.headers.get("X-TTFB-Ms")}ms</b> &middot; ` +
+             `total ${res.headers.get("X-Total-Ms")}ms &middot; ` +
+             `${(blob.size/1024).toFixed(1)} KB &middot; trace #${res.headers.get("X-Trace-Id")}`,
+             undefined, "alert-success");
+    $("t-audio").play().catch(() => {});
+  } catch (e) { out("t", e.message, e.detail, "alert-error"); } finally { busy(btn, false); }
+};
+
+// ------------------------------------------------------------------- STREAM
+/**
+ * Real streaming playback. The point of this endpoint is that audio starts
+ * before the text is finished, so chunks are fed to a MediaSource as they
+ * arrive rather than collected into a Blob at the end. Buffering to the end
+ * would work, but it would measure nothing and sound no different to the
+ * one-shot REST call.
+ *
+ * MediaSource only takes a container it can parse, so this path needs mp3.
+ * Other formats fall back to collect-then-play, and the log says so.
+ */
+let sock = null, sLog = [], sChunks = [];
+let mediaSource = null, sourceBuffer = null, appendQueue = [], streamEnded = false;
+let firstAudioAt = 0, playingAt = 0, sT0 = 0;
+
+const sPrint = () => { $("s-out").textContent = sLog.join("\n"); $("s-out").scrollTop = 1e6; };
+const sBtns = on => ["s-send","s-flush","s-stop"].forEach(id => $(id).disabled = !on);
+const sLogLine = (ms, text) => { sLog.push(`  +${String(Math.round(ms)).padStart(5)}ms  ${text}`); sPrint(); };
+
+/** appendBuffer throws while the buffer is updating, so drain through a queue. */
+function pump() {
+  if (!sourceBuffer || sourceBuffer.updating || !appendQueue.length) {
+    if (streamEnded && !appendQueue.length && sourceBuffer && !sourceBuffer.updating
+        && mediaSource?.readyState === "open") {
+      try { mediaSource.endOfStream(); } catch (e) { console.error("[poc] endOfStream", e); }
+    }
+    return;
+  }
+  try { sourceBuffer.appendBuffer(appendQueue.shift()); }
+  catch (e) { console.error("[poc] appendBuffer failed", e); sLogLine(performance.now() - sT0, `append error: ${e.message}`); }
+}
+
+function openStream(format) {
+  const audio = $("s-audio");
+  audio.hidden = false;
+  firstAudioAt = 0; playingAt = 0; streamEnded = false;
+  appendQueue = []; sChunks = []; sourceBuffer = null; mediaSource = null;
+
+  const canStream = format === "mp3" && typeof MediaSource !== "undefined"
+                    && MediaSource.isTypeSupported("audio/mpeg");
+  if (!canStream) {
+    sLog.push(`  (${format} cannot stream through MediaSource; collecting, will play at finish)`);
+    sPrint();
+    return false;
+  }
+
+  mediaSource = new MediaSource();
+  audio.src = URL.createObjectURL(mediaSource);
+  mediaSource.addEventListener("sourceopen", () => {
+    sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
+    sourceBuffer.addEventListener("updateend", pump);
+    sourceBuffer.addEventListener("error", e => console.error("[poc] sourceBuffer error", e));
+    pump();
+  }, { once: true });
+  audio.addEventListener("playing", () => {
+    if (!playingAt) { playingAt = performance.now() - sT0; sLogLine(playingAt, "AUDIBLE - playback started"); }
+  }, { once: true });
+  return true;
+}
+
+$("s-start").onclick = () => {
+  sock?.close();
+  sLog = []; sT0 = performance.now();
+  const streaming = openStream($("s-format").value);
+
+  sock = new WebSocket(`ws://${location.host}/ws`);
+  sock.binaryType = "arraybuffer";
+
+  sock.onopen = () => {
+    sLogLine(performance.now() - sT0, "browser socket open -> start");
+    sock.send(JSON.stringify({ event: "start", model: $("s-model").value, request: {
+      format: $("s-format").value, latency: str($("s-latency")),
+      reference_id: str($("s-ref")), chunk_length: num($("s-chunk")) } }));
+    sBtns(true);
+  };
+
+  sock.onmessage = e => {
+    if (e.data instanceof ArrayBuffer) {
+      const bytes = new Uint8Array(e.data);
+      if (!firstAudioAt) {
+        firstAudioAt = performance.now() - sT0;
+        sLogLine(firstAudioAt, "first audio byte");
+      }
+      if (streaming) {
+        appendQueue.push(bytes); pump();
+        // Autoplay is allowed here: this all began with a click on start.
+        $("s-audio").play().catch(err => console.warn("[poc] autoplay blocked", err));
+      } else sChunks.push(bytes);
+      return;
+    }
+    const m = JSON.parse(e.data);
+    if (m.type === "event" && m.event === "audio") return;          // logged on arrival above
+    if (m.type === "event") sLogLine(m.ms, `${m.event}${m.reason ? " " + m.reason : ""}`);
+    else if (m.type === "sent") sLogLine(m.ms, `-> ${m.event}`);
+    else if (m.type === "open") sLogLine(m.ms, "upstream open (msgpack)");
+    else if (m.type === "done") {
+      streamEnded = true;
+      if (streaming) pump();
+      else { $("s-audio").src = URL.createObjectURL(new Blob(sChunks, { type: "audio/mpeg" }));
+             $("s-audio").hidden = false; $("s-audio").play().catch(() => {}); }
+      sLog.push("",
+        `first byte to browser : ${Math.round(firstAudioAt)}ms`,
+        `audible               : ${playingAt ? Math.round(playingAt) + "ms" : "not started"}`,
+        `server ttfb           : ${m.ttfbMs}ms`,
+        `total                 : ${m.ms}ms`,
+        `${m.chunks} chunks, ${m.bytes} bytes, trace #${m.traceId}`);
+      sPrint();
+      sBtns(false);
+    }
+    else if (m.type === "error") { sLog.push(`ERROR: ${m.message}`); sPrint(); sBtns(false); }
+    else if (m.type === "closed") sLogLine(performance.now() - sT0, `upstream closed (${m.code})`);
+  };
+
+  sock.onerror = e => { console.error("[poc] stream socket error", e);
+    sLog.push("socket error - see console"); sPrint(); };
+  sock.onclose = () => { sLogLine(performance.now() - sT0, "browser socket closed"); sBtns(false); };
+};
+$("s-send").onclick  = () => sock?.send(JSON.stringify({ event: "text", text: $("s-text").value }));
+$("s-flush").onclick = () => sock?.send(JSON.stringify({ event: "flush" }));
+$("s-stop").onclick  = () => sock?.send(JSON.stringify({ event: "stop" }));
+
+// -------------------------------------------------------------------- AGENT
+// The official client owns the transport, microphone capture, turn events and
+// interruption. We only mint the session token server-side and hand it over
+// verbatim, which is the documented integration shape.
+const { AgentSession } = await import("https://cdn.jsdelivr.net/npm/@fishaudio/agent-client@0.2/+esm");
+
+let session = null, lastSessionId = null;
+const liveBtns = on => ["se-mute","se-interrupt","se-end","se-say","se-send"]
+  .forEach(id => $(id).disabled = !on);
+
+/** Render finalized turns as chat bubbles, keyed so re-renders stay stable. */
+const turns = new Map();
+function drawChat() {
+  $("se-chat").innerHTML = [...turns.values()].map(m =>
+    `<div class="chat ${m.role === "user" ? "chat-end" : "chat-start"}">` +
+    `<div class="chat-header opacity-60">${m.role}</div>` +
+    `<div class="chat-bubble">${m.text.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</div></div>`
+  ).join("");
+  $("se-chat").scrollTop = 1e6;
+}
+
+$("ag-list").onclick = async () => {
+  try {
+    const d = await api("/api/agents?page_size=50");
+    const list = d.agents ?? d.items ?? [];
+    $("se-agent").innerHTML = !list.length ? '<option value="">no agents yet</option>' :
+      list.map(a => `<option value="${a.agent_id}">${a.name} - ${a.agent_id.slice(0,8)}</option>`).join("");
+    out("se", `${list.length} agent(s) available`);
+  } catch (e) { out("se", e.message, e.detail, "alert-error"); }
+};
+$("ag-create").onclick = async () => {
+  const btn = $("ag-create"); busy(btn, true);
+  try {
+    const a = await api("/api/agents", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: $("ag-name").value,
+        overrides_allowed: ["first_message", "system_prompt", "voice_id", "language"],
+        config: { prompt: $("ag-prompt").value, first_message: str($("ag-first")),
+                  language: $("ag-lang").value, voice_id: str($("ag-voice")) } }) });
+    out("se", `Created agent <b>${a.agent_id}</b>`, json(a), "alert-success");
+    await $("ag-list").onclick();
+    $("se-agent").value = a.agent_id;
+  } catch (e) { out("se", e.message, e.detail, "alert-error"); } finally { busy(btn, false); }
+};
+
+$("se-start").onclick = async () => {
+  if (!$("se-agent").value) return out("se", "Pick an agent first", undefined, "alert-warning");
+  const btn = $("se-start"); busy(btn, true);
+  turns.clear(); drawChat();
+  try {
+    // 1. Mint the token on our server. The key never reaches the browser.
+    const sessionToken = await api("/api/sessions", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent_id: $("se-agent").value,
+        metadata: parseMeta(),
+        overrides: { language: str($("se-lang")), system_prompt: str($("se-prompt")),
+                     first_message: str($("se-first")) } }) });
+    delete sessionToken.traceId;   // our own field, not part of the token
+
+    // 2. Hand it to the SDK verbatim; it connects and publishes the mic.
+    session = await AgentSession.start({ sessionToken });
+    lastSessionId = session.sessionId;
+
+    session.on("statusChange", s => $("se-status").textContent = s);
+    session.on("modeChange", m => $("se-mode").textContent = m);
+    session.on("message", m => { turns.set(m.id ?? turns.size, m); drawChat(); });
+    session.on("userTranscript", e => {
+      if (e.isFinal === false) $("se-status").textContent = "listening";
+    });
+    session.on("error", e => out("se", `${e.code ?? "error"}: ${e.message}`, JSON.stringify(e, Object.getOwnPropertyNames(e), 2), "alert-error"));
+    session.on("disconnect", e => {
+      out("se", `Call ended: ${e.reason}`, undefined, "alert-warning");
+      liveBtns(false); $("se-status").textContent = "ended";
+    });
+
+    liveBtns(true);
+    out("se", `Live on session <b>${session.sessionId}</b>. Speak, or type a turn below.`,
+        undefined, "alert-success");
+  } catch (e) { out("se", e.message, e.detail, "alert-error"); }
+  finally { busy(btn, false); }
+};
+
+$("se-mute").onclick = async () => {
+  const muted = !session.micMuted;
+  await session.setMicMuted(muted);
+  $("se-mute").textContent = muted ? "Unmute mic" : "Mute mic";
+};
+$("se-interrupt").onclick = () => session?.interrupt();
+$("se-send").onclick = () => {
+  const text = $("se-say").value.trim();
+  if (!text) return;
+  session.sendUserMessage(text);
+  $("se-say").value = "";
+};
+$("se-end").onclick = async () => {
+  try { await session?.end?.(); } catch {}
+  try { await api(`/api/sessions/${lastSessionId}/end`, { method: "POST" }); } catch {}
+  liveBtns(false);
+  out("se", "Session ended");
+};
+$("se-fetch").onclick = async () => {
+  const id = lastSessionId ?? prompt("session_id");
+  if (!id) return;
+  try { const d = await api(`/api/sessions/${id}`);
+    out("se", `${d.status} - ${d.items?.length ?? 0} transcript items server-side`, json(d));
+  } catch (e) { out("se", e.message, e.detail, "alert-error"); }
+};
+$("se-rec").onclick = async () => {
+  const id = lastSessionId ?? prompt("session_id");
+  if (!id) return;
+  try { out("se", "Recording URLs (time limited)", json(await api(`/api/sessions/${id}/recording`))); }
+  catch (e) { out("se", e.message, e.detail, "alert-error"); }
+};
+$("se-list").onclick = async () => {
+  try { const d = await api("/api/sessions?page_size=20");
+    out("se", `${(d.sessions ?? d.items ?? []).length} session(s)`, json(d)); }
+  catch (e) { out("se", e.message, e.detail, "alert-error"); }
+};
+
+// ---------------------------------------------------------------------- ASR
+$("a-go").onclick = async () => {
+  const file = $("a-file").files[0];
+  if (!file) return out("a", "Choose an audio file first", undefined, "alert-warning");
+  const btn = $("a-go"); busy(btn, true);
+  const fd = new FormData();
+  fd.append("audio", file);
+  fd.append("ignore_timestamps", String(!$("a-ts").checked));
+  if (str($("a-lang"))) fd.append("language", str($("a-lang")));
+  try {
+    const d = await api("/api/asr", { method: "POST", body: fd });
+    out("a", `${d.language ?? d.language_code ?? "detected"} &middot; ${d.duration ?? "?"}s &middot; ` +
+             `${d.segments?.length ?? 0} segments`, json(d), "alert-success");
+  } catch (e) { out("a", e.message, e.detail, "alert-error"); } finally { busy(btn, false); }
+};
+
+// ------------------------------------------------------------------- MODELS
+$("m-list").onclick = async () => {
+  const q = new URLSearchParams({ page_size: $("m-size").value, page_number: $("m-page").value,
+    sort_by: $("m-sort").value, self: String($("m-self").checked) });
+  if (str($("m-title-q"))) q.set("title", str($("m-title-q")));
+  if (str($("m-lang"))) q.set("language", str($("m-lang")));
+  try {
+    const d = await api(`/api/models?${q}`), items = d.items ?? [];
+    $("m-table").innerHTML = !items.length ? "<p>No models yet.</p>" :
+      '<table class="table table-sm"><thead><tr><th>Title</th><th>State</th><th>Visibility</th><th></th></tr></thead><tbody>' +
+      items.map(m => `<tr><td><a class="link" href="#" data-id="${m._id}">${m.title ?? m._id}</a></td>` +
+        `<td><span class="badge ${m.state === "trained" ? "badge-success" : "badge-warning"}">${m.state}</span></td>` +
+        `<td>${m.visibility ?? ""}</td>` +
+        `<td><a class="link" href="#" data-del="${m._id}">delete</a></td></tr>`).join("") + "</tbody></table>";
+    out("m", `${items.length} of ${d.total} &middot; trace #${d.traceId}` +
+      (items.some(m => m.state !== "trained")
+        ? " &middot; only <code>trained</code> models work as a voice" : ""));
+    $("m-table").querySelectorAll("[data-id]").forEach(a => a.onclick = async ev => {
+      ev.preventDefault();
+      try { out("m", `Model ${a.dataset.id}`, json(await api(`/api/models/${a.dataset.id}`))); }
+      catch (e) { out("m", e.message, e.detail, "alert-error"); } });
+    $("m-table").querySelectorAll("[data-del]").forEach(a => a.onclick = async ev => {
+      ev.preventDefault();
+      if (!confirm(`Delete ${a.dataset.del}? This cannot be undone.`)) return;
+      try { await api(`/api/models/${a.dataset.del}`, { method: "DELETE" });
+        out("m", "Deleted"); $("m-list").click(); loadVoices(); }
+      catch (e) { out("m", e.message, e.detail, "alert-error"); } });
+  } catch (e) { $("m-table").innerHTML = ""; out("m", e.message, undefined, "alert-error"); }
+};
+$("m-go").onclick = async () => {
+  const files = [...$("m-files").files];
+  if (!files.length || files.length > 20)
+    return out("m", "Select between 1 and 20 audio samples", undefined, "alert-warning");
+  const btn = $("m-go"); busy(btn, true);
+  const fd = new FormData();
+  files.forEach(f => fd.append("voices", f));
+  fd.append("title", $("m-title").value || "poc-voice");
+  fd.append("visibility", $("m-vis").value);
+  fd.append("enhance_audio_quality", String($("m-enh").checked));
+  fd.append("generate_sample", String($("m-samp").checked));
+  if (str($("m-desc"))) fd.append("description", str($("m-desc")));
+  $("m-texts").value.split("\n").map(s => s.trim()).filter(Boolean).forEach(t => fd.append("texts", t));
+  $("m-tags").value.split(",").map(s => s.trim()).filter(Boolean).forEach(t => fd.append("tags", t));
+  try {
+    const m = await api("/api/models", { method: "POST", body: fd });
+    out("m", `Created &middot; state <b>${m.state}</b> &middot; poll until ` +
+             `<code>trained</code> before using it as a voice`, json(m), "alert-success");
+    $("m-list").click();
+  } catch (e) { out("m", e.message, e.detail, "alert-error"); } finally { busy(btn, false); }
+};
+
+/** Metadata is free-form JSON; bad input should not block starting a call. */
+function parseMeta() {
+  const raw = $("se-meta").value.trim();
+  if (!raw) return undefined;
+  try { return JSON.parse(raw); }
+  catch { out("se", "metadata is not valid JSON, sending without it", undefined, "alert-warning"); }
+}
+
+// --------------------------------------------------------------------- USAGE
+const mmss = s => `${Math.floor(s/60)}m ${String(s%60).padStart(2,"0")}s`;
+$("u-go").onclick = async () => {
+  const btn = $("u-go"); busy(btn, true);
+  try {
+    const d = await api("/api/usage?page_size=100");
+    const b = d.balances, c = d.conversations;
+    $("u-stats").innerHTML =
+      `<div class="stat"><div class="stat-title">Conversations</div>
+         <div class="stat-value text-2xl">${c.count}</div>
+         <div class="stat-desc">${mmss(c.totalSeconds)} total</div></div>
+       <div class="stat"><div class="stat-title">API credit</div>
+         <div class="stat-value text-2xl">${b.apiCredit ?? "-"}</div>
+         <div class="stat-desc">pay as you go, paid models</div></div>
+       <div class="stat"><div class="stat-title">Free plan</div>
+         <div class="stat-value text-2xl">${b.packageBalance ?? "-"}</div>
+         <div class="stat-desc">of ${b.packageTotal ?? "-"} (${b.packageType ?? "-"})</div></div>`;
+    const agents = Object.entries(c.byAgent);
+    $("u-agents").innerHTML = !agents.length ? "" :
+      '<table class="table table-sm"><thead><tr><th>Agent</th><th>Calls</th><th>Duration</th></tr></thead><tbody>' +
+      agents.map(([k, v]) => `<tr><td>${k}</td><td>${v.calls}</td><td>${mmss(v.seconds)}</td></tr>`).join("") +
+      "</tbody></table>";
+    $("u-table").innerHTML = !c.sessions.length ? "<p>No conversations yet.</p>" :
+      '<table class="table table-sm"><thead><tr><th>Started</th><th>Agent</th><th>Status</th>' +
+      "<th>Duration</th><th>metadata</th></tr></thead><tbody>" +
+      c.sessions.map(s => `<tr><td>${(s.started_at ?? "").slice(5,16).replace("T"," ")}</td>` +
+        `<td>${s.agent_name ?? ""}</td>` +
+        `<td><span class="badge ${s.status === "completed" ? "badge-success" : "badge-ghost"}">${s.status}</span></td>` +
+        `<td>${s.duration_seconds ? mmss(s.duration_seconds) : "-"}</td>` +
+        `<td><code class="text-xs">${Object.keys(s.metadata).length ? JSON.stringify(s.metadata) : "-"}</code></td></tr>`
+      ).join("") + "</tbody></table>";
+    out("u", d.note, undefined, "alert-info");
+  } catch (e) { out("u", e.message, e.detail, "alert-error"); } finally { busy(btn, false); }
+};
+
+// --------------------------------------------------------------------- WIRE
+$("w-refresh").onclick = async () => {
+  const d = await api("/api/traces");
+  const rows = d.items ?? d;
+  $("w-table").innerHTML = !rows.length ? "<p>No calls yet.</p>" :
+    '<table class="table table-sm"><thead><tr><th>#</th><th>Call</th><th>Status</th>' +
+    "<th>TTFB</th><th>Total</th></tr></thead><tbody>" +
+    rows.map(t => `<tr><td><a class="link" href="#" data-t="${t.id}">${t.id}</a></td>` +
+      `<td>${t.label}</td>` +
+      `<td><span class="badge ${t.error || (t.status ?? 0) >= 300 ? "badge-error" : "badge-success"}">` +
+      `${t.error ? "error" : t.status ?? "-"}</span></td>` +
+      `<td>${t.ttfbMs != null ? Math.round(t.ttfbMs)+"ms" : "-"}</td>` +
+      `<td>${t.ms != null ? Math.round(t.ms)+"ms" : "-"}</td></tr>`).join("") + "</tbody></table>";
+  $("w-table").querySelectorAll("[data-t]").forEach(a => a.onclick = ev => {
+    ev.preventDefault();
+    const t = rows.find(x => x.id === +a.dataset.t);
+    out("w", `${t.method} ${t.url}`, json(t));
+  });
+};
+</script>

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "deploy": {
+      "source": "pipecat-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/deploy/SKILL.md",
+      "computedHash": "d80b69a7886df6a516cd71243d790f58efb503a1f95cbf6e878ecf832c9370f2"
+    },
+    "init": {
+      "source": "pipecat-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/init/SKILL.md",
+      "computedHash": "56e485a741f1e440c7fe89c4046c132faca0991449b4bd27c2c47a34191b5ff6"
+    },
+    "talk": {
+      "source": "pipecat-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/talk/SKILL.md",
+      "computedHash": "f10aada7c47a58e65d1d3b036ee1dfd969b8b7eff3d005ea59d770b6bcda1c6b"
+    }
+  }
+}
