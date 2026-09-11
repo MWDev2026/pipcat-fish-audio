@@ -16,6 +16,7 @@ import { TranscriptView } from './TranscriptView';
 import { AudioControlsBar } from './AudioControlsBar';
 import { DiagnosticConsole } from './DiagnosticConsole';
 import { diagnosticLogger } from '../utils/webrtcLogger';
+import { getSmallWebRTCConfig } from '../config';
 
 interface AppProps extends PipecatBaseChildProps {}
 
@@ -26,6 +27,7 @@ export const App = ({
 }: AppProps) => {
   const [activeDiagTab, setActiveDiagTab] = useState<'trace' | 'rtvi'>('trace');
   const [iceState, setIceState] = useState<string>('new');
+  const [selectedVoice, setSelectedVoice] = useState<string>('default');
 
   useEffect(() => {
     client?.initDevices();
@@ -40,6 +42,16 @@ export const App = ({
       }
     });
   }, []);
+
+  const handleConnectWithVoice = () => {
+    if (client) {
+      // Connect directly passing voice configuration in requestData
+      const config = getSmallWebRTCConfig(selectedVoice);
+      client.connect(config);
+    } else {
+      handleConnect?.();
+    }
+  };
 
   return (
     <Sheet>
@@ -85,9 +97,11 @@ export const App = ({
         {/* Bottom Floating Control Bar */}
         <footer className="shrink-0">
           <AudioControlsBar
-            onConnect={handleConnect}
+            onConnect={handleConnectWithVoice}
             onDisconnect={handleDisconnect}
             iceState={iceState}
+            selectedVoice={selectedVoice}
+            onVoiceChange={setSelectedVoice}
           />
         </footer>
 

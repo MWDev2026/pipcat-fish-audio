@@ -18,15 +18,20 @@ const headers = botStartPublicApiKey
   ? new Headers({ Authorization: `Bearer ${botStartPublicApiKey}` })
   : undefined;
 
-const smallWebRTCConfig: APIRequest = {
-  endpoint: botStartUrl,
-  headers,
-  requestData: {
-    createDailyRoom: false,
-    enableDefaultIceServers: true,
-    transport: 'webrtc',
-  },
-};
+export function getSmallWebRTCConfig(voice: string = 'default'): APIRequest {
+  return {
+    endpoint: botStartUrl,
+    headers,
+    requestData: {
+      createDailyRoom: false,
+      enableDefaultIceServers: true,
+      transport: 'webrtc',
+      body: {
+        voice,
+      },
+    },
+  };
+}
 
 export interface TransportProps {
   connectParams?: APIRequest | TransportConnectionParams;
@@ -34,5 +39,5 @@ export interface TransportProps {
 }
 
 export const TRANSPORT_PROPS: Record<TransportType, TransportProps> = {
-  smallwebrtc: { connectParams: smallWebRTCConfig },
+  smallwebrtc: { connectParams: getSmallWebRTCConfig() },
 };

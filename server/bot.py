@@ -1,5 +1,9 @@
+import os
+import aiohttp
+from typing import Optional
 from dotenv import load_dotenv
 from loguru import logger
+from fastapi import FastAPI
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -14,23 +18,49 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
+from pipecat.runner.run import app
 
 from services import create_llm_service, create_stt_service, create_tts_service
+from services.config import TTSConfig
+from services.tts.fish import CURATED_FISH_VOICES
 
 load_dotenv(override=True)
 
 
-async def run_bot(transport: BaseTransport):
+# Mount voice listing endpoint onto Pipecat runner FastAPI app
+@app.get("/api/voices")
+async def get_voices():
+    """Return available Fish Audio voices (curated and custom options)."""
+    api_key = os.getenv("FISH_AUDIO_API_KEY", "")
+    current_voice = os.getenv("FISH_VOICE", "default")
+    
+    voices = []
+    for key, info in CURATED_FISH_VOICES.items():
+        voices.append({
+            "id": key,
+            "voice_id": info["id"],
+            "name": info["name"],
+            "selected": key == current_voice or info["id"] == current_voice,
+        })
+
+    return {
+        "current_voice": current_voice,
+        "voices": voices,
+    }
+
+
+async def run_bot(transport: BaseTransport, voice: Optional[str] = None):
     """Main bot logic following official Pipecat cascade pipeline."""
-    logger.info("Starting Pipecat voice bot session")
+    logger.info(f"Starting Pipecat voice bot session with voice: {voice or 'default'}")
 
     # Abstract STT service (Whisper, etc.)
     stt = create_stt_service()
 
-    # Abstract TTS service (Fish Audio, etc.)
-    tts = create_tts_service()
+    # Abstract TTS service with requested voice
+    tts_config = TTSConfig(voice=voice) if voice else None
+    tts = create_tts_service(tts_config)
 
-    # Abstract LLM service (LM Studio, OpenAI, Ollama, etc.)
+    # Abstract LLM service (OpenAI, LM Studio, Ollama, etc.)
     llm = create_llm_service()
 
     context = LLMContext()
@@ -89,6 +119,9 @@ async def bot(runner_args: RunnerArguments):
     match runner_args:
         case SmallWebRTCRunnerArguments():
             webrtc_connection: SmallWebRTCConnection = runner_args.webrtc_connection
+            body = getattr(runner_args, "body", {}) or {}
+            voice = body.get("voice") if isinstance(body, dict) else None
+
             transport = SmallWebRTCTransport(
                 webrtc_connection=webrtc_connection,
                 params=TransportParams(
@@ -96,7 +129,7 @@ async def bot(runner_args: RunnerArguments):
                     audio_out_enabled=True,
                 ),
             )
-            await run_bot(transport)
+            await run_bot(transport, voice=voice)
         case _:
             logger.error(f"Unsupported runner arguments type: {type(runner_args)}")
             return

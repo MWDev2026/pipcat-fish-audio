@@ -32,5 +32,6 @@ class TTSConfig:
     provider: str = field(default_factory=lambda: os.getenv("TTS_PROVIDER", "fish").lower())
     api_key: Optional[str] = None
     model: Optional[str] = None
+    voice: Optional[str] = field(default_factory=lambda: os.getenv("FISH_VOICE", None))
     latency: str = "low"
     prosody_speed: float = 1.0

@@ -3,17 +3,22 @@ import { usePipecatClient, usePipecatClientTransportState } from '@pipecat-ai/cl
 import { Mic, MicOff, PhoneCall, PhoneOff, Terminal, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { SheetTrigger } from './ui/sheet';
+import { VoiceSelector } from './VoiceSelector';
 
 interface AudioControlsBarProps {
   onConnect?: () => void | Promise<void>;
   onDisconnect?: () => void | Promise<void>;
   iceState?: string;
+  selectedVoice: string;
+  onVoiceChange: (voice: string) => void;
 }
 
 export function AudioControlsBar({
   onConnect,
   onDisconnect,
   iceState,
+  selectedVoice,
+  onVoiceChange,
 }: AudioControlsBarProps) {
   const client = usePipecatClient();
   const transportState = usePipecatClientTransportState();
@@ -40,31 +45,37 @@ export function AudioControlsBar({
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 shadow-md backdrop-blur-md">
-      {/* Mic Mute / Unmute Button */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={isMuted ? 'destructive' : 'outline'}
-          size="icon"
-          disabled={!isConnected}
-          onClick={toggleMic}
-          title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-          className="rounded-full size-11 shadow-xs transition-all"
-        >
-          {isMuted ? (
-            <MicOff className="size-5" />
-          ) : (
-            <Mic className="size-5" />
-          )}
-        </Button>
-        <div className="hidden sm:flex flex-col text-left">
-          <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-            {isMuted ? 'Muted' : 'Microphone'}
-          </span>
-          <span className="text-[10px] text-neutral-400">
-            {isMuted ? 'Click to speak' : 'Default Input'}
-          </span>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 shadow-md backdrop-blur-md">
+      {/* Mic & Voice Selection */}
+      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={isMuted ? 'destructive' : 'outline'}
+            size="icon"
+            disabled={!isConnected}
+            onClick={toggleMic}
+            title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+            className="rounded-full size-10 shadow-xs transition-all shrink-0"
+          >
+            {isMuted ? (
+              <MicOff className="size-4" />
+            ) : (
+              <Mic className="size-4" />
+            )}
+          </Button>
+          <div className="hidden md:flex flex-col text-left">
+            <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+              {isMuted ? 'Muted' : 'Mic'}
+            </span>
+          </div>
         </div>
+
+        {/* Fish Audio Voice Dropdown */}
+        <VoiceSelector
+          selectedVoice={selectedVoice}
+          onVoiceChange={onVoiceChange}
+          disabled={isConnected || isConnecting}
+        />
       </div>
 
       {/* Main Connect / Disconnect Call Button */}
@@ -109,7 +120,7 @@ export function AudioControlsBar({
             className="rounded-xl gap-2 font-mono text-xs border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <Terminal className="size-3.5 text-indigo-500" />
-            <span className="hidden md:inline">Diagnostics</span>
+            <span className="hidden lg:inline">Diagnostics</span>
             {iceState && (
               <span
                 className={`size-2 rounded-full ${
