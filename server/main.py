@@ -1,11 +1,16 @@
 import asyncio
 import os
+from collections import deque
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+
+# In-memory log buffer for client debug panel
+log_buffer = deque(maxlen=250)
+logger.add(lambda msg: log_buffer.append(str(msg).strip()), format="{time:HH:mm:ss.SSS} | {level: <7} | {message}")
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
@@ -155,6 +160,11 @@ async def health():
         "lm_studio_url": LM_STUDIO_URL,
         "lm_studio_model": LM_STUDIO_MODEL,
     }
+
+
+@app.get("/api/logs")
+async def get_logs():
+    return {"logs": list(log_buffer)}
 
 
 @app.post("/api/offer")
