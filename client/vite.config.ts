@@ -7,8 +7,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8765',
-      '/health': 'http://localhost:8765'
+      '/start': 'http://localhost:7860',
+      '/sessions': 'http://localhost:7860',
+      '/api': 'http://localhost:7860',
+      '/status': 'http://localhost:7860',
     }
   }
 })
