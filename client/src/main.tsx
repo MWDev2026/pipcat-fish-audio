@@ -24,7 +24,13 @@ export const Main = () => {
   return (
     <ThemeProvider defaultTheme="terminal" disableStorage>
       <FullScreenContainer>
-        <PipecatAppBase {...transportProps} transportType={transportType}>
+        <PipecatAppBase
+          {...transportProps}
+          transportType={transportType}
+          transportOptions={{
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+          }}
+        >
           {({ client, handleConnect, handleDisconnect, error }: PipecatBaseChildProps) =>
             !client ? (
               <SpinLoader />
