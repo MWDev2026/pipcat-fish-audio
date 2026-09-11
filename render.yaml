@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pipcat-voice-backend
+    runtime: docker
+    dockerfilePath: server/Dockerfile
+    dockerContext: server
+    plan: free
+    region: oregon
+    envVars:
+      - key: FISH_AUDIO_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: openai
+      - key: PIPECAT_ICE_SERVERS
+        value: stun:stun.l.google.com:19302
