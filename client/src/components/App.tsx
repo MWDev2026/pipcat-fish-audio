@@ -62,7 +62,7 @@ export const App = ({
               <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
                 <span>Fish Audio s2.1</span>
                 <span>·</span>
-                <span>LM Studio Qwen 3.5</span>
+                <span>OpenAI gpt-4o-mini</span>
               </div>
             </div>
           </div>
