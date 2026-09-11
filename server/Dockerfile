@@ -28,6 +28,7 @@ RUN useradd -m -u 1000 user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR /home/user/app
+RUN chown user:user /home/user/app
 
 # Copy dependency files first for layer caching
 COPY pyproject.toml .
@@ -43,5 +44,5 @@ USER user
 # Hugging Face Spaces expose port 7860 by default
 EXPOSE 7860
 
-# Launch bot runner on 0.0.0.0:7860
-CMD ["uv", "run", "bot.py", "--host", "0.0.0.0", "--port", "7860"]
+# Launch bot runner on 0.0.0.0:7860 (deps already installed system-wide, no venv needed)
+CMD ["python", "bot.py", "--host", "0.0.0.0", "--port", "7860"]
