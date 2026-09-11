@@ -66,36 +66,58 @@ export function App() {
 
       // Candidate handling via PATCH
       let pcId: string | null = null;
-      pc.onicecandidate = async (event) => {
-        if (event.candidate && pcId) {
-          try {
-            await fetch('/api/offer', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                pc_id: pcId,
-                candidates: [
-                  {
-                    candidate: event.candidate.candidate,
-                    sdp_mid: event.candidate.sdpMid,
-                    sdp_mline_index: event.candidate.sdpMLineIndex,
-                  },
-                ],
-              }),
-            });
-          } catch (e) {
-            console.warn('ICE candidate patch failed:', e);
-          }
+      const candidateQueue: RTCIceCandidate[] = [];
+
+      const sendCandidate = async (candidate: RTCIceCandidate, targetPcId: string) => {
+        try {
+          await fetch('/api/offer', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pc_id: targetPcId,
+              candidates: [
+                {
+                  candidate: candidate.candidate,
+                  sdp_mid: candidate.sdpMid,
+                  sdp_mline_index: candidate.sdpMLineIndex,
+                },
+              ],
+            }),
+          });
+        } catch (e) {
+          console.warn('ICE candidate patch failed:', e);
         }
+      };
+
+      pc.onicecandidate = async (event) => {
+        if (!event.candidate) return;
+        if (!pcId) {
+          candidateQueue.push(event.candidate);
+        } else {
+          await sendCandidate(event.candidate, pcId);
+        }
+      };
+
+      const markConnected = () => {
+        setIsConnected(true);
+        setIsConnecting(false);
+        setStatusText('Call active (SmallWebRTC peer-to-peer)');
       };
 
       pc.onconnectionstatechange = () => {
         const state = pc.connectionState;
         if (state === 'connected') {
-          setIsConnected(true);
-          setIsConnecting(false);
-          setStatusText('Call active (SmallWebRTC peer-to-peer)');
+          markConnected();
         } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+          handleDisconnect();
+        }
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        const iceState = pc.iceConnectionState;
+        if (iceState === 'connected' || iceState === 'completed') {
+          markConnected();
+        } else if (iceState === 'failed' || iceState === 'closed') {
           handleDisconnect();
         }
       };
@@ -121,6 +143,15 @@ export function App() {
       const answerData = await response.json();
       pcId = answerData.pc_id;
 
+      // Flush candidates gathered before SDP answer arrived
+      for (const candidate of candidateQueue) {
+        if (pcId) {
+          await sendCandidate(candidate, pcId);
+        }
+      }
+      candidateQueue.length = 0;
+
+      setStatusText('Connecting media streams...');
       await pc.setRemoteDescription(
         new RTCSessionDescription({
           type: answerData.type,

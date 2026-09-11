@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
@@ -157,13 +157,17 @@ async def health():
 
 
 @app.post("/api/offer")
-async def handle_offer(request: Request):
+async def handle_offer(request: Request, background_tasks: BackgroundTasks):
     try:
         body = await request.json()
         req = SmallWebRTCRequest.from_dict(body)
+
+        async def launch_bot(connection: SmallWebRTCConnection):
+            background_tasks.add_task(run_bot, connection)
+
         answer = await request_handler.handle_web_request(
             request=req,
-            webrtc_connection_callback=run_bot,
+            webrtc_connection_callback=launch_bot,
         )
         return answer
     except Exception as e:
