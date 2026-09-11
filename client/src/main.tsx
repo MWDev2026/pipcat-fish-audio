@@ -17,6 +17,10 @@ import {
 } from './config';
 import './index.css';
 
+const STABLE_TRANSPORT_OPTIONS = {
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+};
+
 export const Main = () => {
   const [transportType] = useState<TransportType>(DEFAULT_TRANSPORT);
   const transportProps = TRANSPORT_PROPS[transportType];
@@ -27,9 +31,7 @@ export const Main = () => {
         <PipecatAppBase
           {...transportProps}
           transportType={transportType}
-          transportOptions={{
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-          }}
+          transportOptions={STABLE_TRANSPORT_OPTIONS}
         >
           {({ client, handleConnect, handleDisconnect, error }: PipecatBaseChildProps) =>
             !client ? (
