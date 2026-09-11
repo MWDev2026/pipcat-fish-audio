@@ -111,3 +111,17 @@ When an agent ID is selected in the UI:
   * Always start from a clean working tree.
   * Write conventional commit messages (e.g. `feat(...)`, `fix(...)`).
   * Never use em dashes ("—"). Use a standard dash ("-") instead.
+
+---
+
+## 7. Free Hosting & Deployment (Cloudflare + Hugging Face)
+
+* **Backend (Hugging Face Docker Space)**:
+  * Uses `server/Dockerfile` and `server/README.md` (metadata with `sdk: docker`, `app_port: 7860`).
+  * Push the `server/` directory to a new Hugging Face Space.
+  * Configure Secrets in the Space Settings: `FISH_AUDIO_API_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER`.
+* **Frontend (Cloudflare Static Assets / Pages)**:
+  * Uses `client/wrangler.jsonc`.
+  * Set `VITE_SERVER_URL=https://<user>-<space-name>.hf.space` in `client/.env.production` or Cloudflare dashboard variables.
+  * Deploy using `pnpm --filter client build && npx wrangler deploy --config client/wrangler.jsonc`.
+

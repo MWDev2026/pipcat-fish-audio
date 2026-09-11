@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bot, RotateCw } from 'lucide-react';
 import { Select } from './ui/select';
 import { Button } from './ui/button';
+import { getApiBaseUrl } from '../config';
 
 export interface VoiceOption {
   id: string;
@@ -31,7 +32,8 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, disabled }: VoiceS
   const loadVoices = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/voices');
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/voices`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.voices && data.voices.length > 0) {

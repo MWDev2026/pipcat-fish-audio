@@ -18,6 +18,7 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
+from fastapi.middleware.cors import CORSMiddleware
 from pipecat.runner.run import app
 
 from services import create_llm_service, create_stt_service, create_tts_service
@@ -25,6 +26,25 @@ from services.config import TTSConfig
 from services.tts.fish import CURATED_FISH_VOICES
 
 load_dotenv(override=True)
+
+# Enable CORS for cross-origin frontend hosting (e.g. Cloudflare Pages/Workers, Vercel)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container platforms (Hugging Face Spaces, Render, etc.)."""
+    return {
+        "status": "healthy",
+        "service": "pipecat-voice-bot",
+        "webrtc": "smallwebrtc",
+    }
 
 
 # Cache for voices/agents to avoid repeated external API calls
