@@ -29,8 +29,5 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_SERVER_URL
-        fromService:
-          type: web
-          name: pipcat-voice-backend
-          property: host
+        value: https://pipcat-voice-backend.onrender.com
 
