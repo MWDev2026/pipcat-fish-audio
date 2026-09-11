@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { usePipecatClient, usePipecatClientTransportState } from '@pipecat-ai/client-react';
 import { SendHorizontal } from 'lucide-react';
 import { Button } from './ui/button';
@@ -13,8 +13,16 @@ export function TextInputBar({ onSendMessage }: TextInputBarProps) {
   const transportState = usePipecatClientTransportState();
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isConnected = transportState === 'ready';
+
+  // Automatically focus input when connection becomes ready
+  useEffect(() => {
+    if (isConnected) {
+      inputRef.current?.focus();
+    }
+  }, [isConnected]);
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -34,6 +42,10 @@ export function TextInputBar({ onSendMessage }: TextInputBarProps) {
       console.error('Failed to send text message to Pipecat:', err);
     } finally {
       setIsSending(false);
+      // Immediately refocus input box so user can type subsequent messages without clicking
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -43,6 +55,7 @@ export function TextInputBar({ onSendMessage }: TextInputBarProps) {
       className="flex items-center gap-2 p-2 border-t border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/80"
     >
       <Input
+        ref={inputRef}
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
         disabled={!isConnected || isSending}
