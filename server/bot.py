@@ -1,5 +1,3 @@
-import os
-
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -12,60 +10,28 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.runner.types import RunnerArguments, SmallWebRTCRunnerArguments
-from pipecat.services.fish.tts import FishAudioTTSService
-from pipecat.services.openai.base_llm import OpenAILLMInvocationParams
-from pipecat.services.openai.llm import OpenAILLMService
-from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
 
+from services import create_llm_service, create_stt_service, create_tts_service
+
 load_dotenv(override=True)
-
-
-class NonThinkingLMStudioLLMService(OpenAILLMService):
-    """OpenAI LLM service customized for LM Studio Qwen models to bypass thinking mode."""
-
-    def build_chat_completion_params(self, params_from_context: OpenAILLMInvocationParams) -> dict:
-        params = super().build_chat_completion_params(params_from_context)
-        msgs = list(params.get("messages", []))
-        if msgs and msgs[-1].get("role") == "user":
-            msgs.append({"role": "assistant", "content": "<think>\n</think>\n"})
-            params["messages"] = msgs
-        params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
-        return params
 
 
 async def run_bot(transport: BaseTransport):
     """Main bot logic following official Pipecat cascade pipeline."""
     logger.info("Starting Pipecat voice bot session")
 
-    # Speech-to-Text service using local Whisper
-    stt = WhisperSTTService()
+    # Abstract STT service (Whisper, etc.)
+    stt = create_stt_service()
 
-    # Text-to-Speech service using Fish Audio s2.1-pro-free
-    tts = FishAudioTTSService(
-        api_key=os.getenv("FISH_AUDIO_API_KEY"),
-        settings=FishAudioTTSService.Settings(
-            model=os.getenv("FISH_MODEL", "s2.1-pro-free"),
-        ),
-    )
+    # Abstract TTS service (Fish Audio, etc.)
+    tts = create_tts_service()
 
-    # LLM service targeting local LM Studio with non-thinking mode
-    llm = NonThinkingLMStudioLLMService(
-        base_url=os.getenv("LM_STUDIO_URL", "http://127.0.0.1:1234/v1"),
-        api_key="lm-studio",
-        settings=OpenAILLMService.Settings(
-            model=os.getenv("LM_STUDIO_MODEL", "qwen3.5-4b-uncensored-hauhaucs-aggressive"),
-            system_instruction=(
-                "You are a helpful and friendly voice AI assistant. "
-                "Your responses will be spoken aloud immediately, so keep responses concise, "
-                "direct, conversational, and under two sentences. "
-                "Do not use markdown, emojis, asterisks, or bullet points."
-            ),
-        ),
-    )
+    # Abstract LLM service (LM Studio, OpenAI, Ollama, etc.)
+    llm = create_llm_service()
 
     context = LLMContext()
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
