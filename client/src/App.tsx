@@ -95,8 +95,12 @@ export function App() {
     addLog('info', 'Starting WebRTC connection sequence...');
 
     try {
-      addLog('info', 'Creating SmallWebRTCTransport instance...');
-      const transport = new SmallWebRTCTransport();
+      addLog('info', 'Creating SmallWebRTCTransport instance with STUN & waitForICEGathering...');
+      const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+      const transport = new SmallWebRTCTransport({
+        iceServers,
+        waitForICEGathering: true,
+      });
       const client = new PipecatClient({
         transport,
         enableMic: true,
@@ -171,6 +175,9 @@ export function App() {
       await client.connect({
         webrtcRequestParams: {
           endpoint: '/api/offer',
+        },
+        iceConfig: {
+          iceServers,
         },
       });
     } catch (err: any) {

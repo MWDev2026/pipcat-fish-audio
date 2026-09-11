@@ -167,11 +167,36 @@ async def get_logs():
     return {"logs": list(log_buffer)}
 
 
+def munge_mdns_candidates(sdp: str, client_ip: str = "127.0.0.1") -> str:
+    """Uncloak browser mDNS (.local) host candidates to client IP for aiortc compatibility."""
+    lines = []
+    munged_count = 0
+    for line in sdp.splitlines():
+        if line.startswith("a=candidate:") and ".local" in line:
+            parts = line.split(" ")
+            if len(parts) >= 8 and parts[4].endswith(".local"):
+                logger.info(f"Uncloaking browser mDNS candidate: {parts[4]} -> {client_ip}")
+                parts[4] = client_ip
+                line = " ".join(parts)
+                munged_count += 1
+        lines.append(line)
+    if munged_count > 0:
+        logger.info(f"Uncloaked {munged_count} mDNS candidates in SDP offer.")
+    return "\r\n".join(lines) + ("\r\n" if sdp.endswith("\r\n") or sdp.endswith("\n") else "")
+
+
 @app.post("/api/offer")
 async def handle_offer(request: Request, background_tasks: BackgroundTasks):
     try:
         body = await request.json()
         req = SmallWebRTCRequest.from_dict(body)
+
+        client_host = request.client.host if request.client else "127.0.0.1"
+        target_ip = "127.0.0.1" if client_host in ("127.0.0.1", "::1", "localhost") else client_host
+        req.sdp = munge_mdns_candidates(req.sdp, target_ip)
+
+        candidate_lines = [l for l in req.sdp.splitlines() if l.startswith("a=candidate:")]
+        logger.info(f"Received offer with {len(candidate_lines)} candidate(s) from {client_host}")
 
         async def launch_bot(connection: SmallWebRTCConnection):
             background_tasks.add_task(run_bot, connection)
@@ -190,15 +215,28 @@ async def handle_offer(request: Request, background_tasks: BackgroundTasks):
 async def handle_patch(request: Request):
     try:
         body = await request.json()
+        client_host = request.client.host if request.client else "127.0.0.1"
+        target_ip = "127.0.0.1" if client_host in ("127.0.0.1", "::1", "localhost") else client_host
+
         raw_candidates = body.get("candidates", [])
-        candidates = [
-            IceCandidate(
-                candidate=c.get("candidate", "") if isinstance(c, dict) else getattr(c, "candidate", ""),
-                sdp_mid=c.get("sdp_mid", c.get("sdpMid", "")) if isinstance(c, dict) else getattr(c, "sdp_mid", ""),
-                sdp_mline_index=c.get("sdp_mline_index", c.get("sdpMLineIndex", 0)) if isinstance(c, dict) else getattr(c, "sdp_mline_index", 0),
+        candidates = []
+        for c in raw_candidates:
+            cand_str = c.get("candidate", "") if isinstance(c, dict) else getattr(c, "candidate", "")
+            if ".local" in cand_str:
+                parts = cand_str.split(" ")
+                if len(parts) >= 8 and parts[4].endswith(".local"):
+                    logger.info(f"Uncloaking patch candidate: {parts[4]} -> {target_ip}")
+                    parts[4] = target_ip
+                    cand_str = " ".join(parts)
+            candidates.append(
+                IceCandidate(
+                    candidate=cand_str,
+                    sdp_mid=c.get("sdp_mid", c.get("sdpMid", "")) if isinstance(c, dict) else getattr(c, "sdp_mid", ""),
+                    sdp_mline_index=c.get("sdp_mline_index", c.get("sdpMLineIndex", 0)) if isinstance(c, dict) else getattr(c, "sdp_mline_index", 0),
+                )
             )
-            for c in raw_candidates
-        ]
+
+        logger.info(f"Received patch with {len(candidates)} candidate(s) for pc_id={body.get('pc_id')}")
         patch_req = SmallWebRTCPatchRequest(
             pc_id=body.get("pc_id"),
             candidates=candidates,
