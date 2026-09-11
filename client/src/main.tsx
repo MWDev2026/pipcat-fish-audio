@@ -15,7 +15,10 @@ import {
   TRANSPORT_PROPS,
   type TransportType,
 } from './config';
+import { diagnosticLogger } from './utils/webrtcLogger';
 import './index.css';
+
+diagnosticLogger.init();
 
 const STABLE_TRANSPORT_OPTIONS = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
