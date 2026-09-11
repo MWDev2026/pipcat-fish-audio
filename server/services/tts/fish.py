@@ -7,14 +7,12 @@ from pipecat.services.fish.tts import FishAudioTTSService
 from ..base import TTSProviderProtocol
 from ..config import TTSConfig
 
-# Popular pre-configured Fish Audio reference voices
+# Preset voices aligned with cloudflare-fish-audio and user account models
 CURATED_FISH_VOICES = {
-    "default": {"id": None, "name": "Default (Fish Audio s2.1 Free)"},
-    "ai_assistant": {"id": "e47ccbcdcf4642f2b4b2174e3938cca7", "name": "AI Assistant (Natural Female)"},
-    "tech_assistant": {"id": "4aa90c24bfdd4e628306d39377f4e3db", "name": "AI Voice Assistant (Crisp Female)"},
-    "customer_service": {"id": "54cc428cee614c0c8c208659b0cbd66a", "name": "Customer Service (Warm Male)"},
-    "announcer": {"id": "90e65eaaf50e4470b8e6d43ee6afd7d5", "name": "Dynamic Announcer (Cinematic Male)"},
-    "google_assistant": {"id": "27098a25110c40d4aad5b72ef4737192", "name": "Modern Google Assistant"},
+    "default": {"id": None, "name": "Default (Fish Audio Native)"},
+    "jensen_huang": {"id": "eb40371539bf465da74708c45ffe0df5", "name": "Jensen Huang"},
+    "poc_voice": {"id": "7ba71ca98c824717a6032887a5282263", "name": "poc-voice (Japanese)"},
+    "satoh_takeru": {"id": "3b983252c6bb476cbf77d7bb69a74b94", "name": "佐藤健 (Japanese)"},
 }
 
 
