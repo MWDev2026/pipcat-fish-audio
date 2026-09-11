@@ -6,6 +6,7 @@ services:
     dockerContext: server
     plan: free
     region: oregon
+    healthCheckPath: /health
     envVars:
       - key: FISH_AUDIO_API_KEY
         sync: false
@@ -15,3 +16,21 @@ services:
         value: openai
       - key: PIPECAT_ICE_SERVERS
         value: stun:stun.l.google.com:19302
+
+  - type: web
+    name: pipcat-voice-client
+    runtime: static
+    rootDir: client
+    buildCommand: pnpm install && pnpm build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SERVER_URL
+        fromService:
+          type: web
+          name: pipcat-voice-backend
+          property: host
+
