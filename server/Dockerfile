@@ -25,19 +25,20 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Set Hugging Face default non-root user (user 1000)
 RUN useradd -m -u 1000 user
-USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR /home/user/app
 
 # Copy dependency files first for layer caching
-COPY --chown=user:user pyproject.toml .
+COPY pyproject.toml .
 
-# Install dependencies using uv
+# Install dependencies as root (system site-packages requires root ownership)
 RUN uv pip install --no-cache -r pyproject.toml
 
 # Copy application source code
 COPY --chown=user:user . .
+
+USER user
 
 # Hugging Face Spaces expose port 7860 by default
 EXPOSE 7860
