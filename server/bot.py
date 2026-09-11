@@ -212,6 +212,10 @@ async def run_bot(transport: BaseTransport, voice: Optional[str] = None):
         logger.info(f"Client disconnected: {client}")
         await worker.cancel()
 
+    @transport.event_handler("on_app_message")
+    async def on_app_message(transport, message, sender):
+        logger.info(f"Received WebRTC app/data channel message from '{sender}': {message}")
+
     runner = WorkerRunner(handle_sigint=False)
     await runner.add_workers(worker)
     await runner.run()

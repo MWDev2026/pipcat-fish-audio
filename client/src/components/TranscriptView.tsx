@@ -3,6 +3,7 @@ import { useRTVIClientEvent } from '@pipecat-ai/client-react';
 import { RTVIEvent, type BotLLMTextData, type TranscriptData } from '@pipecat-ai/client-js';
 import { Bot, User, Sparkles, MessageSquareDashed } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TextInputBar } from './TextInputBar';
 
 interface ChatMessage {
   id: string;
@@ -120,7 +121,7 @@ export function TranscriptView() {
             <MessageSquareDashed className="size-8 stroke-1 mb-2 text-neutral-300 dark:text-neutral-700" />
             <p className="text-xs font-medium">No conversation yet</p>
             <p className="text-[11px] text-neutral-400">
-              Connect and say "Hello" to start speaking with the agent.
+              Connect and say "Hello" or type a message below to begin.
             </p>
           </div>
         ) : (
@@ -165,6 +166,21 @@ export function TranscriptView() {
           ))
         )}
       </div>
+
+      {/* Integrated Text Input Bar */}
+      <TextInputBar
+        onSendMessage={(text) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `user-text-${Date.now()}-${Math.random()}`,
+              role: 'user',
+              text,
+              timestamp: getNowFormatted(),
+            },
+          ]);
+        }}
+      />
     </div>
   );
 }
